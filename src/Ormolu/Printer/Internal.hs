@@ -35,6 +35,7 @@ module Ormolu.Printer.Internal
     trimSpanStream,
     nextEltSpan,
     popComment,
+    observeNextComment,
     getEnclosingSpan,
     withEnclosingSpan,
     HaddockStyle (..),
@@ -436,6 +437,12 @@ popComment f = R $ do
                     }
               )
         else return Nothing
+
+-- | Observe next comment in the stream without removing it.
+observeNextComment :: R (Maybe (RealLocated Comment))
+observeNextComment = R $ do
+  CommentStream cstream <- gets scCommentStream
+  return (listToMaybe cstream)
 
 -- | Get the first enclosing 'RealSrcSpan' that satisfies given predicate.
 getEnclosingSpan ::

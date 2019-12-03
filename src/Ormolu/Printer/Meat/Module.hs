@@ -1,5 +1,6 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 -- | Rendering of modules.
 module Ormolu.Printer.Meat.Module
@@ -22,7 +23,8 @@ import Ormolu.Printer.Meat.Pragma
 import qualified Data.Set as E
 import Data.Maybe (mapMaybe)
 
--- import Data.List.NonEmpty (NonEmpty (..))
+import Data.Function (on)
+import Data.List (groupBy, foldl')
 import Data.Map.Strict (Map)
 import Data.Maybe (fromJust, fromMaybe)
 import Ormolu.Parser.CommentStream
@@ -74,16 +76,18 @@ p_hsModule shebangs pragmas (L moduleSpan HsModule {..}) = do
         newline
     newline
     let sortedImports = sortImports hsmodImports
-        importLinesSet = E.fromList (mapMaybe importLine sortedImports)
+        importLinesSet = E.fromList (mapMaybe getStartLine hsmodImports)
     unless (E.null importLinesSet) $ do
+      fileName <- maybe "" (srcLocFile . realSrcSpanStart . getRealSrcSpan)
+        <$> observeNextComment
       let firstLine = fromJust (E.lookupMin importLinesSet)
           lastLine = fromJust (E.lookupMax importLinesSet)
           importSectionSpn =
-            -- FIXME (0) a problem here with file names
-            mkSrcSpan (mkSrcLoc "foo.hs" firstLine 1) (mkSrcLoc "foo.hs" firstLine 1)
+            mkSrcSpan (mkSrcLoc fileName firstLine 1)
+                      (mkSrcLoc fileName firstLine 1)
       -- This should output (and remove from the comment stream) all
       -- comments that go before the import section.
-      traceShow firstLine $ located (L importSectionSpn ()) $ \() -> do
+      located (L importSectionSpn ()) $ \() -> do
         -- We want to sort imports before printing them, which means that
         -- outputting corresponding comments is trickier and we cannot just use
         -- our familiar 'located' helpers. 'located' picks up and outputs
@@ -93,12 +97,40 @@ p_hsModule shebangs pragmas (L moduleSpan HsModule {..}) = do
         -- Instead we pop all comments that are within the import section before
         -- we start outputting comments and then we manually match and output
         -- them as we go through the import list.
-        _cs <- popImportComments lastLine
+        cs <- popImportComments lastLine
         let importComments :: Map Int [RealLocated Comment]
-            importComments = M.empty -- FIXME (1) implement proper intelligent association
+            importComments = M.fromList $
+              mapMaybe rearrange $ groupBy ((==) `on` fst) rawAssignments
+              where
+                rearrange :: [(Int, RealLocated Comment)] -> Maybe (Int, [RealLocated Comment])
+                rearrange = \case
+                  [] -> Nothing
+                  xs@((i, _) : _) -> Just (i, reverse (snd <$> xs))
+                f (assignedSoFar, currentImportSection, lineIndices) x =
+                  case lineIndices of
+                    [] ->
+                      ( (currentImportSection, x) : assignedSoFar
+                      , currentImportSection
+                      , lineIndices
+                      )
+                    (nextIndex : otherIndices) ->
+                      if traceShow (getRealStartLine x, nextIndex) (getRealStartLine x >= nextIndex)
+                        then ( (nextIndex, x) : assignedSoFar
+                             , nextIndex
+                             , otherIndices
+                             )
+                        else ( (currentImportSection, x) : assignedSoFar
+                             , currentImportSection
+                             , lineIndices
+                             )
+                (rawAssignments, _, _) = foldl'
+                  f
+                  ([], firstIndex, otherIndices')
+                  cs
+                (firstIndex : otherIndices') = traceShowId (mapMaybe getStartLine hsmodImports)
         forM_ sortedImports $ \x -> do
           let comments = fromMaybe [] $ do
-                l <- importLine x
+                l <- getStartLine x
                 M.lookup l importComments
           withCommentStream comments $
             located' p_hsmodImport x
@@ -108,16 +140,26 @@ p_hsModule shebangs pragmas (L moduleSpan HsModule {..}) = do
       newline
       spitRemainingComments
 
--- | FIXME (2) this is a naive version.
+-- | Return line number on which the import is located or 'Nothing' if the
+-- attached span is “unhelpful” (should not happen in practice).
+getStartLine :: Located a -> Maybe Int
+getStartLine (L spn _) = case spn of
+  RealSrcSpan rspn -> Just (srcSpanStartLine rspn)
+  UnhelpfulSpan _ -> Nothing
+
+getRealStartLine :: RealLocated a -> Int
+getRealStartLine (L spn _) = srcSpanStartLine spn
+
 popImportComments ::
   -- | Line number of the last line in the import section.
   Int ->
   R [RealLocated Comment]
-popImportComments lastLine = go
+popImportComments = go
   where
-    go = do
-      r <- popComment $ \(L spn _) ->
-        srcSpanStartLine spn <= lastLine
+    go lastLine = do
+      r <- popComment $ \x ->
+        let g = getRealStartLine x
+        in g <= lastLine + 1
       case r of
         Nothing -> return []
-        Just x -> (x :) <$> go
+        Just x -> (x :) <$> go (max lastLine (getRealStartLine x))
