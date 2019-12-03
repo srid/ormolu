@@ -22,10 +22,13 @@ import Ormolu.Printer.Meat.Pragma
 import qualified Data.Set as E
 import Data.Maybe (mapMaybe)
 
-import Data.List.NonEmpty (NonEmpty (..))
+-- import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict (Map)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (fromJust, fromMaybe)
 import Ormolu.Parser.CommentStream
+import qualified Data.Map.Strict as M
+
+import Debug.Trace
 
 -- | Render a module.
 p_hsModule ::
@@ -71,41 +74,50 @@ p_hsModule shebangs pragmas (L moduleSpan HsModule {..}) = do
         newline
     newline
     let sortedImports = sortImports hsmodImports
-        commentedLines = E.fromList (mapMaybe importLine sortedImports)
-    case listToMaybe sortedImports of
-      Nothing -> return ()
-      Just (x : _) -> do
-        let firstLine = fromJust (lookupMin commentedLines)
-            lastLine = fromJust (lookupMax commentedLines) + 1
-            importSectionSpn =
-              mkSrcSpan (mkSrcLoc "" firstLine 0) (mkSrcLoc "" lastLine 0)
-        -- This should output (and remove from the comment stream) all
-        -- comments that go before the import section.
-        located (L importSectionSpn ()) $ \() -> do
-          -- We want to sort imports before printing them, which means that
-          -- outputting corresponding comments is trickier and we cannot just use
-          -- our familiar 'located' helpers. 'located' picks up and outputs
-          -- anything up to current position, so that if the last import becomes
-          -- the first after sorting all comments will be dumped before it.
-          --
-          -- Instead we pop all comments that are within the import section before
-          -- we start outputting comments and then we manually match and output
-          -- them as we go through the import list.
-
-          -- TODO pop comments form the import region and assign them to different
-          -- imports as designated by their starting lines in the original input.
-
-          let importComments :: Map Int (NonEmpty Comment)
-              importComments = undefined
-
-          forM_ sortedImports $ \x ->
-            -- TODO for every import printing action temporarily replace comment
-            -- stream by using a new primitive combinator for that. Then use
-            -- located as usual for actual outputting of the comment.
+        importLinesSet = E.fromList (mapMaybe importLine sortedImports)
+    unless (E.null importLinesSet) $ do
+      let firstLine = fromJust (E.lookupMin importLinesSet)
+          lastLine = fromJust (E.lookupMax importLinesSet)
+          importSectionSpn =
+            -- FIXME (0) a problem here with file names
+            mkSrcSpan (mkSrcLoc "foo.hs" firstLine 1) (mkSrcLoc "foo.hs" firstLine 1)
+      -- This should output (and remove from the comment stream) all
+      -- comments that go before the import section.
+      traceShow firstLine $ located (L importSectionSpn ()) $ \() -> do
+        -- We want to sort imports before printing them, which means that
+        -- outputting corresponding comments is trickier and we cannot just use
+        -- our familiar 'located' helpers. 'located' picks up and outputs
+        -- anything up to current position, so that if the last import becomes
+        -- the first after sorting all comments will be dumped before it.
+        --
+        -- Instead we pop all comments that are within the import section before
+        -- we start outputting comments and then we manually match and output
+        -- them as we go through the import list.
+        _cs <- popImportComments lastLine
+        let importComments :: Map Int [RealLocated Comment]
+            importComments = M.empty -- FIXME (1) implement proper intelligent association
+        forM_ sortedImports $ \x -> do
+          let comments = fromMaybe [] $ do
+                l <- importLine x
+                M.lookup l importComments
+          withCommentStream comments $
             located' p_hsmodImport x
-
     newline
     switchLayout (getLoc <$> hsmodDecls) $ do
       p_hsDecls Free hsmodDecls
       newline
       spitRemainingComments
+
+-- | FIXME (2) this is a naive version.
+popImportComments ::
+  -- | Line number of the last line in the import section.
+  Int ->
+  R [RealLocated Comment]
+popImportComments lastLine = go
+  where
+    go = do
+      r <- popComment $ \(L spn _) ->
+        srcSpanStartLine spn <= lastLine
+      case r of
+        Nothing -> return []
+        Just x -> (x :) <$> go

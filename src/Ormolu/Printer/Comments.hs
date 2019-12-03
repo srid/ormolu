@@ -23,6 +23,8 @@ import Ormolu.Printer.Internal
 import Ormolu.Utils (isModule)
 import SrcLoc
 
+import Debug.Trace
+
 ----------------------------------------------------------------------------
 -- Top-level
 
@@ -77,7 +79,9 @@ spitPrecedingComment ::
   -- | Are we done?
   R Bool
 spitPrecedingComment (L ref a) mlastSpn = do
-  let p (L l _) = realSrcSpanEnd l <= realSrcSpanStart ref
+  let p (L l _) =
+        let bobla = realSrcSpanEnd l <= realSrcSpanStart ref
+        in traceShow (bobla, realSrcSpanEnd l, realSrcSpanStart ref) bobla
   withPoppedComment p $ \l comment -> do
     dirtyLine <-
       case mlastSpn of
