@@ -40,6 +40,7 @@ module Ormolu.Printer.Internal
     HaddockStyle (..),
     setLastCommentSpan,
     getLastCommentSpan,
+    replaceCommentStream,
 
     -- * Annotations
     getAnns,
@@ -479,6 +480,19 @@ setLastCommentSpan mhStyle spn = R . modify $ \sc ->
 -- | Get span of last output comment.
 getLastCommentSpan :: R (Maybe (Maybe HaddockStyle, RealSrcSpan))
 getLastCommentSpan = R (gets scLastCommentSpan)
+
+-- | Run the inner action with temporarily altered comment stream.
+replaceCommentStream ::
+  -- | Contents of the comment stream to use for the inner computation.
+  [RealLocated Comment] ->
+  R () ->
+  -- | The innear computation.
+  R ()
+replaceCommentStream cs (R m) = R $ do
+  ambientStream <- gets scCommentStream
+  modify $ \sc -> sc { scCommentStream = CommentStream cs }
+  m
+  modify $ \sc -> sc { scCommentStream = ambientStream }
 
 ----------------------------------------------------------------------------
 -- Annotations

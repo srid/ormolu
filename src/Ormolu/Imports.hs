@@ -5,6 +5,7 @@
 -- | Manipulations on import lists.
 module Ormolu.Imports
   ( sortImports,
+    importLine,
   )
 where
 
@@ -30,6 +31,13 @@ sortImports = sortBy compareIdecl . fmap (fmap sortImportLists)
             ..
           }
       XImportDecl {} -> notImplemented "XImportDecl"
+
+-- | Return line number on which the import is located or 'Nothing' if the
+-- attached span is “unhelpful” (should not happen in practice).
+importLine :: LImportDecl GhcPs -> Maybe Int
+importLine (L spn _) = case spn of
+  RealSrcSpan rspn -> Just (srcSpanStartLine rspn)
+  UnhelpfulSpan _ -> Nothing
 
 -- | Compare two @'LImportDecl' 'GhcPs'@ things.
 compareIdecl :: LImportDecl GhcPs -> LImportDecl GhcPs -> Ordering
