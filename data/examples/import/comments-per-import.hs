@@ -1,3 +1,8 @@
-import Foo -- (1)
-import Bar -- (2)
-import Baz -- (3)
+-- Preceding comment.
+import Foo -- foo comment
+import Bar -- bar comment
+           -- continuation of bar comment
+import Baz -- baz comment
+           -- continuation of baz comment
+
+-- Following comment.

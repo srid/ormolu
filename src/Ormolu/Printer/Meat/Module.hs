@@ -30,8 +30,6 @@ import Data.Maybe (fromJust, fromMaybe)
 import Ormolu.Parser.CommentStream
 import qualified Data.Map.Strict as M
 
-import Debug.Trace
-
 -- | Render a module.
 p_hsModule ::
   -- | Shebangs
@@ -114,7 +112,7 @@ p_hsModule shebangs pragmas (L moduleSpan HsModule {..}) = do
                       , lineIndices
                       )
                     (nextIndex : otherIndices) ->
-                      if traceShow (getRealStartLine x, nextIndex) (getRealStartLine x >= nextIndex)
+                      if getRealStartLine x >= nextIndex
                         then ( (nextIndex, x) : assignedSoFar
                              , nextIndex
                              , otherIndices
@@ -127,7 +125,7 @@ p_hsModule shebangs pragmas (L moduleSpan HsModule {..}) = do
                   f
                   ([], firstIndex, otherIndices')
                   cs
-                (firstIndex : otherIndices') = traceShowId (mapMaybe getStartLine hsmodImports)
+                (firstIndex : otherIndices') = mapMaybe getStartLine hsmodImports
         forM_ sortedImports $ \x -> do
           let comments = fromMaybe [] $ do
                 l <- getStartLine x
