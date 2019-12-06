@@ -45,17 +45,18 @@ p_hsDecls style decls = sepSemi id $
   case groupDecls decls of
     [] -> []
     (x : xs) ->
-      NE.toList (renderGroup x)
-        ++ concatMap (NE.toList . separateGroup . renderGroup) xs
+      NE.toList (renderGroup <$> x)
+        ++ concatMap (NE.toList . separateGroup . fmap renderGroup) xs
   where
-    renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
+    renderGroup = located' $ dontUseBraces . p_hsDecl style
     separateGroup (x :| xs) = (breakpoint' >> x) :| xs
 
 p_hsDeclsPreserveNl :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
 p_hsDeclsPreserveNl style decls = sepSemi f $
   locsWithBlanks getLoc $ concat $ NE.toList <$> groupDecls decls
   where
-    f (nl, x) = when nl breakpoint' >> located' (dontUseBraces .p_hsDecl style) x
+    f (nl, x) = when nl breakpoint' >> renderGroup x
+    renderGroup = located' $ dontUseBraces . p_hsDecl style
 
 -- | Group relevant declarations together.
 --
