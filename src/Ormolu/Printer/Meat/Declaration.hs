@@ -52,16 +52,10 @@ p_hsDecls style decls = sepSemi id $
     separateGroup (x :| xs) = (breakpoint' >> x) :| xs
 
 p_hsDeclsPreserveNl :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
-p_hsDeclsPreserveNl style decls = dontUseBraces $ sepSemi f $
-  -- Return a list of rendered declarations, adding a newline to separate
-  -- groups.
-  -- concatMap (NE.toList . renderGroup) $ groupDecls decls
+p_hsDeclsPreserveNl style decls = sepSemi f $
   locsWithBlanks getLoc $ concat $ NE.toList <$> groupDecls decls
   where
-    f (nl, x) = when nl breakpoint' >> located' (p_hsDecl style) x
-    -- renderGroup :: NonEmpty (LHsDecl GhcPs) -> NonEmpty (R ())
-    -- renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
-    -- renderGroup = _ . sepSemi (p_hsDecl style) . NE.toList
+    f (nl, x) = when nl breakpoint' >> located' (dontUseBraces .p_hsDecl style) x
 
 -- | Group relevant declarations together.
 --
