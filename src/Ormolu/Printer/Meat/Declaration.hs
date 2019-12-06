@@ -7,10 +7,12 @@
 -- | Rendering of declarations.
 module Ormolu.Printer.Meat.Declaration
   ( p_hsDecls,
+    p_hsDeclsPreserveNl,
     hasSeparatedDecls,
   )
 where
 
+import Control.Monad
 import Data.List (sort)
 import Data.List.NonEmpty ((<|), NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -36,18 +38,30 @@ import Ormolu.Printer.Meat.Type
 import Ormolu.Utils
 import RdrName (rdrNameOcc)
 
-p_hsDecls :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
-p_hsDecls style decls = sepSemi id $
+p_hsDecls :: Bool -> FamilyStyle -> [LHsDecl GhcPs] -> R ()
+p_hsDecls break style decls = sepSemi id $
   -- Return a list of rendered declarations, adding a newline to separate
   -- groups.
   case groupDecls decls of
     [] -> []
     (x : xs) ->
       NE.toList (renderGroup x)
-        ++ concatMap (NE.toList . separateGroup . renderGroup) xs
+        ++ concatMap (NE.toList . (if break then separateGroup else id) . renderGroup) xs
   where
     renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
     separateGroup (x :| xs) = (breakpoint' >> x) :| xs
+
+p_hsDeclsPreserveNl :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
+p_hsDeclsPreserveNl style decls = dontUseBraces $ sepSemi f $
+  -- Return a list of rendered declarations, adding a newline to separate
+  -- groups.
+  -- concatMap (NE.toList . renderGroup) $ groupDecls decls
+  locsWithBlanks getLoc $ concat $ NE.toList <$> groupDecls decls
+  where
+    f (nl, x) = when nl breakpoint' >> located' (p_hsDecl style) x
+    -- renderGroup :: NonEmpty (LHsDecl GhcPs) -> NonEmpty (R ())
+    -- renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
+    -- renderGroup = _ . sepSemi (p_hsDecl style) . NE.toList
 
 -- | Group relevant declarations together.
 --

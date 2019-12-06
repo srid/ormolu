@@ -66,6 +66,6 @@ p_hsModule shebangs pragmas (L moduleSpan HsModule {..}) = do
     forM_ (sortImports hsmodImports) (located' p_hsmodImport)
     newline
     switchLayout (getLoc <$> hsmodDecls) $ do
-      p_hsDecls Free hsmodDecls
+      p_hsDecls True Free hsmodDecls
       newline
       spitRemainingComments

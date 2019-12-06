@@ -1053,7 +1053,7 @@ p_hsBracket = \case
           _ -> "e"
     quote name (located expr p_hsExpr)
   PatBr NoExt pat -> quote "p" (p_pat pat)
-  DecBrL NoExt decls -> quote "d" (p_hsDecls Free decls)
+  DecBrL NoExt decls -> quote "d" (p_hsDecls True Free decls)
   DecBrG NoExt _ -> notImplemented "DecBrG" -- result of renamer
   TypBr NoExt ty -> quote "t" (located ty p_hsType)
   VarBr NoExt isSingleQuote name -> do

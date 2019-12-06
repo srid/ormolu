@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -97,8 +98,8 @@ p_clsInstDecl = \case
             breakpoint
             -- Add newline before first declaration if the body contains separate
             -- declarations
-            when (hasSeparatedDecls allDecls) breakpoint'
-            dontUseBraces $ p_hsDecls Associated allDecls
+            -- when (hasSeparatedDecls allDecls) breakpoint'
+            dontUseBraces $ p_hsDeclsPreserveNl Associated allDecls
       XHsImplicitBndrs NoExt -> notImplemented "XHsImplicitBndrs"
   XClsInstDecl NoExt -> notImplemented "XClsInstDecl"
 
