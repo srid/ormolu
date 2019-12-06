@@ -55,8 +55,9 @@ p_hsDecls style decls = sepSemi id $
 --
 -- Do some normalization (compress subsequent newlines into a single one)
 p_hsDeclsPreserveNl :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
-p_hsDeclsPreserveNl style decls = sepSemi (withNl renderGroup) $
-  locsWithBlanks getLoc decls
+p_hsDeclsPreserveNl style decls =
+  sepSemi (withNl renderGroup) $
+    locsWithBlanks getLoc decls
   where
     withNl f (nl, x) = when nl breakpoint' >> f x
     renderGroup = located' $ dontUseBraces . p_hsDecl style

@@ -10,7 +10,7 @@ module Ormolu.Utils
     splitDocString,
     typeArgToType,
     unSrcSpan,
-    locsWithBlanks
+    locsWithBlanks,
   )
 where
 
@@ -89,17 +89,19 @@ unSrcSpan (UnhelpfulSpan _) = Nothing
 
 -- | Compute whether blank lines need to be inserted
 locsWithBlanks :: (a -> SrcSpan) -> [a] -> [(Bool, a)]
-locsWithBlanks f es = snd $
-  mapAccumL (\prev a -> (end a, computeDiff a prev)) Nothing es
-  where end a = srcSpanEndLine <$> unSrcSpan (f a)
-        start a = srcSpanStartLine <$> unSrcSpan (f a)
-        diff loc prev = do
-          startLine <- prev
-          endLine <- start loc
-          pure $ endLine - startLine
-        computeDiff a prev
-          | Just i <- diff a prev
-          , i >= 2
-          = (True, a)
-          | otherwise
-          = (False, a)
+locsWithBlanks f es =
+  snd $
+    mapAccumL (\prev a -> (end a, computeDiff a prev)) Nothing es
+  where
+    end a = srcSpanEndLine <$> unSrcSpan (f a)
+    start a = srcSpanStartLine <$> unSrcSpan (f a)
+    diff loc prev = do
+      startLine <- prev
+      endLine <- start loc
+      pure $ endLine - startLine
+    computeDiff a prev
+      | Just i <- diff a prev,
+        i >= 2 =
+        (True, a)
+      | otherwise =
+        (False, a)
