@@ -51,11 +51,14 @@ p_hsDecls style decls = sepSemi id $
     renderGroup = located' $ dontUseBraces . p_hsDecl style
     separateGroup (x :| xs) = (breakpoint' >> x) :| xs
 
+-- | Like p_hsDecl but preserves user added newlines
+--
+-- Do some normalization (compress subsequent newlines into a single one)
 p_hsDeclsPreserveNl :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
-p_hsDeclsPreserveNl style decls = sepSemi f $
-  locsWithBlanks getLoc $ concat $ NE.toList <$> groupDecls decls
+p_hsDeclsPreserveNl style decls = sepSemi (withNl renderGroup) $
+  locsWithBlanks getLoc decls
   where
-    f (nl, x) = when nl breakpoint' >> renderGroup x
+    withNl f (nl, x) = when nl breakpoint' >> f x
     renderGroup = located' $ dontUseBraces . p_hsDecl style
 
 -- | Group relevant declarations together.
