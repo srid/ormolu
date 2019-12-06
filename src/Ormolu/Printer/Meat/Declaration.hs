@@ -45,10 +45,10 @@ p_hsDecls style decls = sepSemi id $
   case groupDecls decls of
     [] -> []
     (x : xs) ->
-      NE.toList (renderGroup <$> x)
-        ++ concatMap (NE.toList . separateGroup . fmap renderGroup) xs
+      NE.toList (renderGroup x)
+        ++ concatMap (NE.toList . separateGroup . renderGroup) xs
   where
-    renderGroup = located' $ dontUseBraces . p_hsDecl style
+    renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
     separateGroup (x :| xs) = (breakpoint' >> x) :| xs
 
 -- | Like p_hsDecl but preserves user added newlines
