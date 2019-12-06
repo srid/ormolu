@@ -89,9 +89,9 @@ unSrcSpan (UnhelpfulSpan _) = Nothing
 
 -- | Compute whether blank lines need to be inserted
 locsWithBlanks :: (a -> SrcSpan) -> [a] -> [(Bool, a)]
-locsWithBlanks f es =
-  snd $
-    mapAccumL (\prev a -> (end a, computeDiff a prev)) Nothing es
+locsWithBlanks f =
+  snd
+    . mapAccumL (\prev a -> (end a, (computeDiff a prev, a))) Nothing
   where
     end a = srcSpanEndLine <$> unSrcSpan (f a)
     start a = srcSpanStartLine <$> unSrcSpan (f a)
@@ -102,6 +102,6 @@ locsWithBlanks f es =
     computeDiff a prev
       | Just i <- diff a prev,
         i >= 2 =
-        (True, a)
+        True
       | otherwise =
-        (False, a)
+        False
