@@ -17,9 +17,9 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ord (Down (Down), comparing)
 import GHC
 import OccName (mkVarOcc)
+import Ormolu.Utils
 import RdrName (mkRdrUnqual)
 import SrcLoc (combineSrcSpans)
-import Ormolu.Utils
 
 -- | Intermediate representation of operator trees. It has two type
 -- parameters: @ty@ is the type of sub-expressions, while @op@ is the type
