@@ -38,15 +38,15 @@ import Ormolu.Printer.Meat.Type
 import Ormolu.Utils
 import RdrName (rdrNameOcc)
 
-p_hsDecls :: Bool -> FamilyStyle -> [LHsDecl GhcPs] -> R ()
-p_hsDecls break style decls = sepSemi id $
+p_hsDecls :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
+p_hsDecls style decls = sepSemi id $
   -- Return a list of rendered declarations, adding a newline to separate
   -- groups.
   case groupDecls decls of
     [] -> []
     (x : xs) ->
       NE.toList (renderGroup x)
-        ++ concatMap (NE.toList . (if break then separateGroup else id) . renderGroup) xs
+        ++ concatMap (NE.toList . separateGroup . renderGroup) xs
   where
     renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
     separateGroup (x :| xs) = (breakpoint' >> x) :| xs

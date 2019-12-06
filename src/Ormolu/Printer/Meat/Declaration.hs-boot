@@ -9,7 +9,7 @@ import GHC
 import Ormolu.Printer.Combinators
 import Ormolu.Printer.Meat.Common
 
-p_hsDecls :: Bool -> FamilyStyle -> [LHsDecl GhcPs] -> R ()
+p_hsDecls :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
 
 p_hsDeclsPreserveNl :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
 

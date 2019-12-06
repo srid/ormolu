@@ -19,6 +19,7 @@ import GHC
 import OccName (mkVarOcc)
 import RdrName (mkRdrUnqual)
 import SrcLoc (combineSrcSpans)
+import Ormolu.Utils
 
 -- | Intermediate representation of operator trees. It has two type
 -- parameters: @ty@ is the type of sub-expressions, while @op@ is the type
@@ -171,8 +172,6 @@ buildFixityMap getOpName opTree =
               maybe 0 srcSpanStartCol (unSrcSpan o),
               go r
             ]
-    unSrcSpan (RealSrcSpan r) = Just r
-    unSrcSpan (UnhelpfulSpan _) = Nothing
 
 ----------------------------------------------------------------------------
 -- Helpers
