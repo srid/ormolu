@@ -110,9 +110,9 @@ locsWithBlanks f =
 
 -- | Compute whether blank lines need to be inserted
 locsWithBlanks' :: NonEmpty a -> (a -> SrcSpan) -> [NonEmpty a] -> [(Bool, NonEmpty a)]
-locsWithBlanks' init f =
+locsWithBlanks' init' f =
   snd
-    . mapAccumL (\prev a -> (end a, (computeDiff a prev, a))) (end init)
+    . mapAccumL (\prev a -> (end a, (computeDiff a prev, a))) (end init')
   where
     -- XXX: this is not looking at comments?
     --

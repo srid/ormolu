@@ -13,7 +13,6 @@ module Ormolu.Printer.Meat.Declaration
 where
 
 import Debug.Trace
-import Data.Bool (bool)
 import Control.Monad
 import Data.List (sort)
 import Data.List.NonEmpty ((<|), NonEmpty (..))
