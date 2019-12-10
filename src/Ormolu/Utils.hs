@@ -11,11 +11,13 @@ module Ormolu.Utils
     typeArgToType,
     unSrcSpan,
     locsWithBlanks,
+    locsWithBlanks',
   )
 where
 
 import Data.Data (Data, showConstr, toConstr)
 import Data.List (dropWhileEnd)
+import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -95,6 +97,27 @@ locsWithBlanks f =
   where
     end a = srcSpanEndLine <$> unSrcSpan (f a)
     start a = srcSpanStartLine <$> unSrcSpan (f a)
+    diff loc prev = do
+      startLine <- prev
+      endLine <- start loc
+      pure $ endLine - startLine
+    computeDiff a prev
+      | Just i <- diff a prev,
+        i >= 2 =
+        True
+      | otherwise =
+        False
+
+-- | Compute whether blank lines need to be inserted
+locsWithBlanks' :: NonEmpty a -> (a -> SrcSpan) -> [NonEmpty a] -> [(Bool, NonEmpty a)]
+locsWithBlanks' init f =
+  snd
+    . mapAccumL (\prev a -> (end a, (computeDiff a prev, a))) (end init)
+  where
+    -- XXX: this is not looking at comments?
+    --
+    end a = srcSpanEndLine <$> unSrcSpan (f $ NE.last a)
+    start a = srcSpanStartLine <$> unSrcSpan (f $ NE.head a)
     diff loc prev = do
       startLine <- prev
       endLine <- start loc

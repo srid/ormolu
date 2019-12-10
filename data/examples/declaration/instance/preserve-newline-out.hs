@@ -3,6 +3,7 @@ instance Num a => Num (Diff a) where
   D u dudx - D v dvdx = D (u - v) (dudx - dvdx)
   D u dudx * D v dvdx = D (u * v) (u * dvdx + v * dudx)
 
+  -- Some documentation
   negate (D u dudx) = D (- u) (- dudx)
   negate (Z u dudx) = undefined
 

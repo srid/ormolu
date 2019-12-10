@@ -12,6 +12,8 @@ module Ormolu.Printer.Meat.Declaration
   )
 where
 
+import Debug.Trace
+import Data.Bool (bool)
 import Control.Monad
 import Data.List (sort)
 import Data.List.NonEmpty ((<|), NonEmpty (..))
@@ -39,28 +41,33 @@ import Ormolu.Utils
 import RdrName (rdrNameOcc)
 
 p_hsDecls :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
-p_hsDecls style decls = sepSemi id $
-  -- Return a list of rendered declarations, adding a newline to separate
-  -- groups.
-  case groupDecls decls of
-    [] -> []
-    (x : xs) ->
-      NE.toList (renderGroup x)
-        ++ concatMap (NE.toList . separateGroup . renderGroup) xs
-  where
-    renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
-    separateGroup (x :| xs) = (breakpoint' >> x) :| xs
+p_hsDecls = p_hsDecls' True
 
 -- | Like p_hsDecl but preserves user added newlines
 --
 -- Do some normalization (compress subsequent newlines into a single one)
 p_hsDeclsPreserveNl :: FamilyStyle -> [LHsDecl GhcPs] -> R ()
-p_hsDeclsPreserveNl style decls =
-  sepSemi (withNl renderGroup) $
-    locsWithBlanks getLoc decls
+p_hsDeclsPreserveNl style decls = p_hsDecls' False style decls
+
+p_hsDecls' :: Bool -> FamilyStyle -> [LHsDecl GhcPs] -> R ()
+p_hsDecls' doBreak style decls = sepSemi id $
+  -- Return a list of rendered declarations, adding a newline to separate
+  -- groups.
+  case groupDecls decls of
+  -- case bool groupDecls0 groupDecls doBreak decls of
+    [] -> []
+    (x : xs) -> do
+      NE.toList (renderGroup $ traceShow (getLoc <$> x) x)
+        ++ concatMap
+          (NE.toList . uncurry separateGroup . fmap renderGroup)
+          ( fmap (\(n,y) -> traceShow ((doBreak, n), fmap getLoc y) (n, y)) $ locsWithBlanks' x getLoc xs)
   where
-    withNl f (nl, x) = when nl breakpoint' >> f x
-    renderGroup = located' $ dontUseBraces . p_hsDecl style
+    renderGroup = fmap (located' $ dontUseBraces . p_hsDecl style)
+    separateGroup doBlank (x :| xs) =
+      breakpointFor doBlank x :| xs
+    breakpointFor doBlank x = do
+      when (or [doBreak, doBlank]) breakpoint'
+      x
 
 -- | Group relevant declarations together.
 --
@@ -162,6 +169,7 @@ groupedDecls x y | Just ns <- isPragma x, Just ns' <- isPragma y = ns `intersect
 groupedDecls x (TypeSignature ns) | Just ns' <- isPragma x = ns `intersects` ns'
 groupedDecls (TypeSignature ns) x | Just ns' <- isPragma x = ns `intersects` ns'
 groupedDecls (PatternSignature ns) (Pattern n) = n `elem` ns
+-- XXX: this looks only at haddock comments?
 groupedDecls DocNext _ = True
 groupedDecls _ DocPrev = True
 groupedDecls _ _ = False
